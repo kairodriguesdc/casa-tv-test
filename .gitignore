@@ -1,0 +1,6 @@
+build/
+.gradle/
+local.properties
+*.apk
+.casa-backup
+.DS_Store

@@ -1,0 +1,41 @@
+name: Build CASA Test
+
+# Builds the TV test app on GitHub's free runners and publishes it as the "latest" release,
+# where the double-click install scripts download it. Nobody needs Android tools on a laptop.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Build the app
+        run: gradle assembleDebug --no-daemon
+
+      - name: Publish it as the "latest" release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk casa-test.apk
+          gh release delete latest --yes --cleanup-tag || true
+          gh release create latest casa-test.apk \
+            --title "CASA Test (latest build)" \
+            --notes "Built from ${GITHUB_SHA::7} on $(date -u +'%Y-%m-%d %H:%M') UTC" \
+            --target "$GITHUB_SHA"

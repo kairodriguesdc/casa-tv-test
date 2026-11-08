@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">CASA Test</string>
+    <string name="mic_watch_label">CASA mic test</string>
+    <string name="mic_watch_description">Temporary test for CASA. Watches remote button presses so the mic button can open CASA from any screen. It reads nothing on screen and keeps a list of the last few button names on the TV only. Uninstall CASA Test to remove it.</string>
+</resources>

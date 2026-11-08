@@ -1,0 +1,43 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'app.casa.test'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'app.casa.test'
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName '0.1'
+    }
+
+    // A fixed test key, so every build installs over the last one and keeps its permissions.
+    // It only signs this throwaway test app; never use it for CASA itself.
+    signingConfigs {
+        debug {
+            storeFile file('casa-test.keystore')
+            storePassword 'casatest'
+            keyAlias 'casatest'
+            keyPassword 'casatest'
+        }
+    }
+
+    buildTypes {
+        debug {
+            minifyEnabled false
+            signingConfig signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+// No libraries: only the Android framework, so the app stays tiny.
+dependencies {
+}

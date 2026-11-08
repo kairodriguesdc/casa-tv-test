@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CASA Test</title>
+<style>
+  :root {
+    --text: rgba(255,255,255,0.94);
+    --muted: rgba(255,255,255,0.64);
+    --line: rgba(255,255,255,0.11);
+    --glass: rgba(255,255,255,0.06);
+    --good: #8FE0B0;
+    --warn: #E9D3A6;
+    --bad: #F2A0A0;
+    --accent: #CFE3FF;
+  }
+  html, body { margin: 0; height: 100%; background: #07090D; overflow: hidden; }
+  body { font-family: system-ui, Roboto, sans-serif; color: var(--text); letter-spacing: -0.2px; }
+  #stage { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; overflow: hidden; background: #07090D; }
+  .orb { position: absolute; border-radius: 50%; will-change: transform; }
+  #o1 { left: -280px; top: -360px; width: 1100px; height: 1100px; background: radial-gradient(closest-side, rgba(46,110,130,0.55), rgba(46,110,130,0)); }
+  #o2 { right: -320px; top: 80px; width: 1200px; height: 1000px; background: radial-gradient(closest-side, rgba(70,72,150,0.45), rgba(70,72,150,0)); }
+  #o3 { left: 520px; bottom: -560px; width: 1100px; height: 900px; background: radial-gradient(closest-side, rgba(150,110,70,0.28), rgba(150,110,70,0)); }
+  body.moving #o1 { animation: drift1 6s ease-in-out infinite alternate; }
+  body.moving #o2 { animation: drift2 7s ease-in-out infinite alternate; }
+  body.moving #o3 { animation: drift1 5s ease-in-out infinite alternate-reverse; }
+  @keyframes drift1 { from { transform: translate(0,0); } to { transform: translate(260px, 120px); } }
+  @keyframes drift2 { from { transform: translate(0,0); } to { transform: translate(-280px, 90px); } }
+
+  #wrap { position: relative; box-sizing: border-box; height: 100%; padding: 56px 88px; display: flex; flex-direction: column; gap: 32px; }
+  header { height: 64px; display: flex; align-items: center; gap: 28px; }
+  header h1 { margin: 0; font-size: 40px; font-weight: 300; letter-spacing: -0.5px; }
+  header .sep { width: 1px; height: 34px; background: rgba(255,255,255,0.16); }
+  header .sub { font-size: 22px; color: var(--muted); }
+  header .grow { flex: 1; }
+  #clock { font-size: 34px; font-weight: 300; }
+
+  .glass { box-sizing: border-box; border-radius: 28px; background: var(--glass); border: 1px solid var(--line); box-shadow: inset 0 1px 0 rgba(255,255,255,0.10), 0 24px 60px rgba(0,0,0,0.35); }
+  body.live .glass { -webkit-backdrop-filter: blur(40px) saturate(160%); backdrop-filter: blur(40px) saturate(160%); }
+  body.light .glass { background: rgba(22,26,34,0.62); }
+
+  .row { display: grid; grid-template-columns: 380px repeat(3, minmax(0, 1fr)); gap: 28px; height: 560px; }
+  .card { padding: 30px; display: flex; flex-direction: column; gap: 16px; min-height: 0; }
+  .card h2 { margin: 0; font-size: 27px; font-weight: 600; letter-spacing: -0.4px; }
+  .card .step { font-size: 16px; letter-spacing: 1.5px; color: var(--muted); font-weight: 500; }
+  .card p { margin: 0; font-size: 20px; line-height: 1.45; color: var(--muted); }
+  .status { font-size: 30px; font-weight: 300; line-height: 1.25; }
+  .ok { color: var(--good); } .warn { color: var(--warn); } .no { color: var(--bad); }
+  .kv { display: flex; justify-content: space-between; gap: 16px; font-size: 18px; padding: 9px 0; border-bottom: 1px solid rgba(255,255,255,0.08); }
+  .kv span:first-child { color: var(--muted); flex-shrink: 0; }
+  .kv span:last-child { text-align: right; word-break: break-word; }
+  .keys { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { height: 34px; padding: 0 14px; border-radius: 17px; display: inline-flex; align-items: center; font-size: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); }
+  .chip.mic { border-color: var(--good); color: var(--good); }
+  .meter { display: flex; align-items: flex-end; gap: 6px; height: 56px; }
+  .meter i { display: block; width: 14px; border-radius: 4px; background: rgba(255,255,255,0.14); height: 8px; transition: height 0.1s, background 0.1s; }
+  .meter i.on { background: var(--accent); }
+  .said { min-height: 64px; padding: 16px 20px; border-radius: 18px; background: rgba(255,255,255,0.06); font-size: 22px; line-height: 1.4; }
+  .bottom { margin-top: auto; display: flex; gap: 12px; flex-wrap: wrap; }
+
+  button.f { height: 56px; padding: 0 26px; border-radius: 28px; border: 1px solid rgba(255,255,255,0.14); background: rgba(255,255,255,0.08); color: var(--text); font: inherit; font-size: 20px; outline: none; cursor: pointer; transition: transform 0.12s, background 0.12s; }
+  button.f:focus { background: rgba(255,255,255,0.92); color: #0A0C10; transform: scale(1.04); box-shadow: 0 0 0 4px rgba(255,255,255,0.22); }
+
+  .perf { height: 214px; padding: 28px 32px; display: flex; align-items: center; gap: 40px; }
+  .perf .lead { width: 520px; display: flex; flex-direction: column; gap: 12px; }
+  .perf .res { flex: 1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+  .perf .box { padding: 18px 24px; border-radius: 20px; background: rgba(255,255,255,0.05); display: flex; flex-direction: column; gap: 4px; }
+  .perf .num { font-size: 52px; font-weight: 300; letter-spacing: -1.5px; }
+
+  #toast { position: absolute; left: 50%; top: 40px; transform: translateX(-50%); padding: 18px 30px; border-radius: 30px; font-size: 24px; background: rgba(30,34,42,0.85); border: 1px solid rgba(255,255,255,0.16); opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+  #toast.show { opacity: 1; }
+</style>
+</head>
+<body class="live">
+<div id="stage">
+  <div class="orb" id="o1"></div>
+  <div class="orb" id="o2"></div>
+  <div class="orb" id="o3"></div>
+
+  <div id="wrap">
+    <header>
+      <h1>CASA Test</h1>
+      <span class="sep"></span>
+      <span class="sub">Results are saved as you go · press Back to exit</span>
+      <span class="grow"></span>
+      <span id="clock">--:--</span>
+    </header>
+
+    <div class="row">
+      <section class="glass card">
+        <span class="step">THIS TV</span>
+        <h2>Device</h2>
+        <div id="facts"></div>
+      </section>
+
+      <section class="glass card">
+        <span class="step">TEST 1</span>
+        <h2>Mic button in CASA</h2>
+        <p>Press the mic button on the remote now. Then hold it for a second.</p>
+        <div class="status" id="t1">Waiting for the mic button…</div>
+        <p id="t1long"></p>
+        <p style="margin-top: 8px">Last buttons pressed here</p>
+        <div class="keys" id="keys"></div>
+      </section>
+
+      <section class="glass card">
+        <span class="step">TEST 2</span>
+        <h2>Voice through the remote</h2>
+        <p>The mic button also starts listening. Say “add a note: buy milk”.</p>
+        <div class="status" id="t2">Not started</div>
+        <div class="meter" id="meter"></div>
+        <div class="said" id="said">…</div>
+        <div class="bottom">
+          <button class="f" id="listen">Start listening</button>
+        </div>
+      </section>
+
+      <section class="glass card">
+        <span class="step">TEST 3</span>
+        <h2>Mic button from anywhere</h2>
+        <p>Press Home, open anything, then press the mic button. CASA Test should come back and listen.</p>
+        <div class="status" id="t3">Checking…</div>
+        <p id="t3detail"></p>
+        <div class="keys" id="watchkeys"></div>
+        <div class="bottom">
+          <button class="f" id="clear">Clear test 3</button>
+        </div>
+      </section>
+    </div>
+
+    <section class="glass perf">
+      <div class="lead">
+        <span class="step" style="font-size: 16px; letter-spacing: 1.5px; color: var(--muted); font-weight: 500">TEST 4</span>
+        <h2 style="margin: 0; font-size: 27px; font-weight: 600">Smoothness of the glass design</h2>
+        <p id="t4" style="margin: 0; font-size: 20px; color: var(--muted)">Runs 20 seconds with the background moving, the worst case.</p>
+        <div style="display: flex; gap: 12px">
+          <button class="f" id="perf">Run smoothness test</button>
+          <button class="f" id="exit">Exit</button>
+        </div>
+      </div>
+      <div class="res">
+        <div class="box"><span style="font-size: 18px; color: var(--muted)">Live glass (real blur)</span><span class="num" id="fpsLive">–</span><span id="slowLive" style="font-size: 17px; color: var(--muted)">frames per second</span></div>
+        <div class="box"><span style="font-size: 18px; color: var(--muted)">Light glass (pre-blurred look)</span><span class="num" id="fpsLight">–</span><span id="slowLight" style="font-size: 17px; color: var(--muted)">frames per second</span></div>
+      </div>
+    </section>
+  </div>
+  <div id="toast"></div>
+</div>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var hasAndroid = typeof window.Android !== 'undefined';
+  var results = { micInApp: null, micLongPress: false, voice: null, heardSound: false, micAnywhere: null, perf: null, device: null, openedByMic: false };
+
+  // Scale the 1920x1080 design to whatever size the TV's web view reports.
+  function fit() {
+    var s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+    $('stage').style.transform = 'scale(' + s + ')';
+  }
+  window.addEventListener('resize', fit); fit();
+
+  function pad(n) { return n < 10 ? '0' + n : '' + n; }
+  function tick() { var d = new Date(); $('clock').textContent = pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+  setInterval(tick, 5000); tick();
+
+  function toast(msg) {
+    var t = $('toast'); t.textContent = msg; t.classList.add('show');
+    clearTimeout(toast._t); toast._t = setTimeout(function () { t.classList.remove('show'); }, 3500);
+  }
+  function setStatus(el, text, cls) { el.textContent = text; el.className = 'status' + (cls ? ' ' + cls : ''); }
+  function report() { if (hasAndroid) Android.report(JSON.stringify(results)); }
+
+  // Level meter
+  var bars = [];
+  for (var i = 0; i < 16; i++) { var b = document.createElement('i'); $('meter').appendChild(b); bars.push(b); }
+  function level(db) {
+    var n = Math.max(0, Math.min(16, Math.round((db + 2) * 1.4)));
+    for (var j = 0; j < bars.length; j++) {
+      bars[j].className = j < n ? 'on' : '';
+      bars[j].style.height = j < n ? (14 + Math.min(42, (db + 2) * 3.5 * (1 - j / 24))) + 'px' : '8px';
+    }
+    if (db > 3 && !results.heardSound) { results.heardSound = true; report(); }
+  }
+
+  // Device facts and the background helper (test 3)
+  function row(k, v) { return '<div class="kv"><span>' + k + '</span><span>' + v + '</span></div>'; }
+  function yesNo(b) { return b ? '<span class="ok">Yes</span>' : '<span class="no">No</span>'; }
+  function refreshInfo() {
+    if (!hasAndroid) return;
+    var info = {};
+    try { info = JSON.parse(Android.info()); } catch (e) { return; }
+    results.device = { model: info.model, android: info.android, webview: info.webview, ramTotalMb: info.ramTotalMb, ramFreeMb: info.ramFreeMb, speechAvailable: info.speechAvailable };
+    $('facts').innerHTML =
+      row('Model', info.model) + row('Android', info.android) + row('Web engine', (info.webview || '').replace('com.google.android.', '')) +
+      row('Memory', info.ramTotalMb + ' MB · ' + info.ramFreeMb + ' MB free') +
+      row('Speech recognition', yesNo(info.speechAvailable)) + row('Mic allowed', yesNo(info.micPermission));
+
+    var t3 = $('t3');
+    if (!info.watchEnabled) {
+      setStatus(t3, 'Helper is off', 'warn');
+      $('t3detail').textContent = 'Switch it on with Claude Code (see CLAUDE.md), then try again.';
+    } else if (info.watchMicCount > 0) {
+      setStatus(t3, 'Works from anywhere', 'ok');
+      $('t3detail').textContent = 'Caught ' + info.watchMicCount + ' time' + (info.watchMicCount > 1 ? 's' : '') + ' · last ' + info.watchLastMic;
+    } else if (info.watchKeys) {
+      setStatus(t3, 'Helper on, mic not caught yet', 'warn');
+      $('t3detail').textContent = 'It sees other buttons. If the mic never shows up, the TV keeps that button for Google.';
+    } else {
+      setStatus(t3, 'Helper on, waiting', '');
+      $('t3detail').textContent = 'Press Home, then the mic button.';
+    }
+    var wk = $('watchkeys'); wk.innerHTML = '';
+    (info.watchKeys ? info.watchKeys.split(',') : []).slice(0, 8).forEach(function (k) {
+      var c = document.createElement('span'); c.className = 'chip' + (/SEARCH|ASSIST/.test(k) ? ' mic' : ''); c.textContent = k; wk.appendChild(c);
+    });
+    var next = { helperOn: !!info.watchEnabled, caught: info.watchMicCount, last: info.watchLastMic, keysSeen: info.watchKeys };
+    if (JSON.stringify(next) !== JSON.stringify(results.micAnywhere)) { results.micAnywhere = next; report(); }
+  }
+  setInterval(refreshInfo, 2500);
+
+  // Native hooks
+  window.casa = {
+    onKey: function (k) {
+      var short = (k.name || '').replace('KEYCODE_', '');
+      if (k.repeat === 0) {
+        var c = document.createElement('span'); c.className = 'chip' + (k.mic ? ' mic' : ''); c.textContent = short + ' · ' + k.code;
+        var box = $('keys'); box.insertBefore(c, box.firstChild);
+        while (box.children.length > 8) box.removeChild(box.lastChild);
+      }
+      if (k.mic && k.repeat === 0) {
+        results.micInApp = { name: k.name, code: k.code, scan: k.scan, device: k.device };
+        setStatus($('t1'), 'Caught · ' + short, 'ok');
+        report();
+      }
+      if (k.mic && k.repeat === 1 && !results.micLongPress) {
+        results.micLongPress = true;
+        $('t1long').textContent = 'Long press also reaches CASA, so short and long press could do different things.';
+        report();
+      }
+    },
+    onVoice: function (v) {
+      var t2 = $('t2');
+      if (v.status === 'done') {
+        setStatus(t2, 'Heard you', 'ok'); $('said').textContent = v.text || '(empty)';
+        results.voice = { ok: true, text: v.text || '' }; report(); level(-2);
+      } else if (v.status === 'partial') {
+        $('said').textContent = v.text;
+      } else if (v.status === 'error' || v.status === 'unavailable' || v.status === 'denied') {
+        setStatus(t2, v.message, 'no'); results.voice = { ok: false, error: v.message }; report(); level(-2);
+      } else {
+        setStatus(t2, v.message, v.status === 'ready' || v.status === 'hearing' ? 'ok' : '');
+      }
+    },
+    onLevel: level,
+    onOpenedByMic: function () {
+      results.openedByMic = true; report();
+      toast('Opened by the mic button from another screen');
+    },
+    refreshInfo: refreshInfo
+  };
+
+  // Buttons
+  $('listen').addEventListener('click', function () { if (hasAndroid) Android.startVoice(); else toast('Runs on the TV only'); });
+  $('clear').addEventListener('click', function () { if (hasAndroid) { Android.clearWatch(); refreshInfo(); toast('Test 3 cleared'); } });
+  $('exit').addEventListener('click', function () { if (hasAndroid) Android.exit(); });
+  $('perf').addEventListener('click', runPerf);
+
+  // Smoothness test: 10 s live blur, then 10 s light glass, background moving the whole time.
+  var running = false;
+  function measure(seconds, done) {
+    var frames = 0, slow = 0, start = null, last = null;
+    function frame(t) {
+      if (start === null) { start = t; last = t; }
+      else { frames++; if (t - last > 34) slow++; last = t; }
+      if (t - start < seconds * 1000) requestAnimationFrame(frame);
+      else done({ fps: Math.round(frames / ((t - start) / 1000)), slowPct: frames ? Math.round(slow * 100 / frames) : 0 });
+    }
+    requestAnimationFrame(frame);
+  }
+  function show(id, slowId, r) {
+    var el = $(id); el.textContent = r.fps;
+    el.className = 'num ' + (r.fps >= 50 ? 'ok' : r.fps >= 30 ? 'warn' : 'no');
+    $(slowId).textContent = 'frames per second · ' + r.slowPct + '% slow frames';
+  }
+  function runPerf() {
+    if (running) return; running = true;
+    document.body.classList.add('moving');
+    document.body.className = 'live moving';
+    $('t4').textContent = 'Measuring live glass… 10 s';
+    setTimeout(function () {
+      measure(10, function (live) {
+        show('fpsLive', 'slowLive', live);
+        document.body.className = 'light moving';
+        $('t4').textContent = 'Measuring light glass… 10 s';
+        setTimeout(function () {
+          measure(10, function (light) {
+            show('fpsLight', 'slowLight', light);
+            document.body.className = 'live';
+            results.perf = { liveGlass: live, lightGlass: light };
+            var best = Math.max(live.fps, light.fps);
+            $('t4').textContent = best >= 50 ? 'Smooth. CASA can use this look.' : best >= 30 ? 'Usable. CASA should use light glass.' : 'Choppy. CASA needs a simpler look on this TV.';
+            report(); running = false;
+          });
+        }, 600);
+      });
+    }, 600);
+  }
+
+  // Remote navigation: arrows move between buttons, OK presses the button.
+  var focusables = function () { return Array.prototype.slice.call(document.querySelectorAll('button.f')); };
+  function move(dir) {
+    var list = focusables(), cur = document.activeElement;
+    if (list.indexOf(cur) < 0) { list[0].focus(); return; }
+    var a = cur.getBoundingClientRect(), ax = a.left + a.width / 2, ay = a.top + a.height / 2, best = null, bestD = Infinity;
+    list.forEach(function (el) {
+      if (el === cur) return;
+      var r = el.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2, dx = x - ax, dy = y - ay;
+      var ok = dir === 'ArrowRight' ? dx > 5 : dir === 'ArrowLeft' ? dx < -5 : dir === 'ArrowDown' ? dy > 5 : dy < -5;
+      if (!ok) return;
+      var d = (dir === 'ArrowLeft' || dir === 'ArrowRight') ? Math.abs(dx) + Math.abs(dy) * 2 : Math.abs(dy) + Math.abs(dx) * 2;
+      if (d < bestD) { bestD = d; best = el; }
+    });
+    if (best) best.focus();
+  }
+  document.addEventListener('keydown', function (e) {
+    if (/^Arrow/.test(e.key)) { e.preventDefault(); move(e.key); }
+  });
+
+  refreshInfo();
+  setTimeout(function () { $('listen').focus(); }, 300);
+  if (hasAndroid) Android.log('PAGE ready');
+})();
+</script>
+</body>
+</html>
