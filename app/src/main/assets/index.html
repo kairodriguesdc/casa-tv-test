@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=1920, user-scalable=no">
 <title>CASA Test</title>
 <style>
   :root {
@@ -156,10 +156,17 @@
 
   // Scale the 1920x1080 design to whatever size the TV's web view reports.
   function fit() {
-    var s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+    var w = document.documentElement.clientWidth || window.innerWidth;
+    var h = document.documentElement.clientHeight || window.innerHeight;
+    if (!w || !h) return;
+    var s = Math.min(w / 1920, h / 1080);
     $('stage').style.transform = 'scale(' + s + ')';
+    window.scrollTo(0, 0);
   }
-  window.addEventListener('resize', fit); fit();
+  window.addEventListener('resize', fit);
+  window.addEventListener('load', fit);
+  window.addEventListener('scroll', function () { if (window.scrollX || window.scrollY) window.scrollTo(0, 0); });
+  fit(); setTimeout(fit, 300); setTimeout(fit, 1200);
 
   function pad(n) { return n < 10 ? '0' + n : '' + n; }
   function tick() { var d = new Date(); $('clock').textContent = pad(d.getHours()) + ':' + pad(d.getMinutes()); }
@@ -247,6 +254,13 @@
         results.voice = { ok: true, text: v.text || '' }; report(); level(-2);
       } else if (v.status === 'partial') {
         $('said').textContent = v.text;
+      } else if (v.status === 'raw') {
+        setStatus(t2, 'Testing the microphone…', 'warn'); $('said').textContent = v.message;
+      } else if (v.status === 'rawok' || v.status === 'rawsilent' || v.status === 'rawnone') {
+        var heard = v.status === 'rawok';
+        setStatus(t2, heard ? 'Mic works, no speech service' : 'Apps can’t hear the remote', heard ? 'warn' : 'no');
+        $('said').textContent = v.message;
+        results.voice = { ok: false, speechService: false, rawMic: heard, message: v.message }; report(); level(-2);
       } else if (v.status === 'error' || v.status === 'unavailable' || v.status === 'denied') {
         setStatus(t2, v.message, 'no'); results.voice = { ok: false, error: v.message }; report(); level(-2);
       } else {
@@ -312,7 +326,7 @@
   var focusables = function () { return Array.prototype.slice.call(document.querySelectorAll('button.f')); };
   function move(dir) {
     var list = focusables(), cur = document.activeElement;
-    if (list.indexOf(cur) < 0) { list[0].focus(); return; }
+    if (list.indexOf(cur) < 0) { list[0].focus({ preventScroll: true }); return; }
     var a = cur.getBoundingClientRect(), ax = a.left + a.width / 2, ay = a.top + a.height / 2, best = null, bestD = Infinity;
     list.forEach(function (el) {
       if (el === cur) return;
@@ -322,14 +336,14 @@
       var d = (dir === 'ArrowLeft' || dir === 'ArrowRight') ? Math.abs(dx) + Math.abs(dy) * 2 : Math.abs(dy) + Math.abs(dx) * 2;
       if (d < bestD) { bestD = d; best = el; }
     });
-    if (best) best.focus();
+    if (best) best.focus({ preventScroll: true }); window.scrollTo(0, 0);
   }
   document.addEventListener('keydown', function (e) {
     if (/^Arrow/.test(e.key)) { e.preventDefault(); move(e.key); }
   });
 
   refreshInfo();
-  setTimeout(function () { $('listen').focus(); }, 300);
+  setTimeout(function () { $('listen').focus({ preventScroll: true }); }, 300);
   if (hasAndroid) Android.log('PAGE ready');
 })();
 </script>

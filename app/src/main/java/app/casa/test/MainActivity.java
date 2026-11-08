@@ -10,6 +10,9 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.media.AudioFormat;
+import android.media.AudioRecord;
+import android.media.MediaRecorder;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.SystemClock;
@@ -65,6 +68,13 @@ public class MainActivity extends Activity {
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
+        // Lay the page out at 1920 x 1080 and shrink it to fit the screen, like a TV picture.
+        s.setUseWideViewPort(true);
+        s.setLoadWithOverviewMode(true);
+        s.setSupportZoom(false);
+        s.setBuiltInZoomControls(false);
+        web.setVerticalScrollBarEnabled(false);
+        web.setHorizontalScrollBarEnabled(false);
         web.addJavascriptInterface(new Bridge(), "Android");
         web.setWebViewClient(new WebViewClient() {
             @Override
@@ -150,7 +160,7 @@ public class MainActivity extends Activity {
             return;
         }
         if (!SpeechRecognizer.isRecognitionAvailable(this)) {
-            voice("unavailable", "This TV has no speech recognition available to apps.", null);
+            rawMicTest();
             return;
         }
         if (recognizer == null) {
@@ -166,6 +176,64 @@ public class MainActivity extends Activity {
         listening = true;
         voice("starting", "Starting the microphone…", null);
         recognizer.startListening(i);
+    }
+
+    /**
+     * No speech service on the TV: check whether apps can hear the remote's microphone at all.
+     * If they can, CASA can record the question and send it to a cloud speech service instead.
+     * Nothing is saved or sent anywhere; only the loudness is measured.
+     */
+    private boolean rawRunning = false;
+
+    private void rawMicTest() {
+        if (rawRunning) return;
+        rawRunning = true;
+        voice("raw", "No speech service on this TV. Testing the microphone itself: keep holding the mic button and speak for 5 seconds.", null);
+        new Thread(() -> {
+            AudioRecord rec = null;
+            try {
+                int rate = 16000;
+                int min = AudioRecord.getMinBufferSize(rate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
+                if (min <= 0) {
+                    voice("rawnone", "This TV has no microphone available to apps.", null);
+                    return;
+                }
+                rec = new AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION, rate,
+                        AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, Math.max(min, rate));
+                if (rec.getState() != AudioRecord.STATE_INITIALIZED) {
+                    voice("rawnone", "The microphone couldn't be opened by apps.", null);
+                    return;
+                }
+                rec.startRecording();
+                short[] buf = new short[1600];
+                double peak = 0;
+                long end = SystemClock.uptimeMillis() + 5000;
+                while (SystemClock.uptimeMillis() < end) {
+                    int n = rec.read(buf, 0, buf.length);
+                    if (n <= 0) continue;
+                    double sum = 0;
+                    for (int i = 0; i < n; i++) sum += (double) buf[i] * buf[i];
+                    double rms = Math.sqrt(sum / n);
+                    if (rms > peak) peak = rms;
+                    double db = rms > 0 ? 20 * Math.log10(rms / 32768.0) : -90;
+                    js("casa.onLevel(" + (float) ((db + 60) / 6.0) + ")");
+                }
+                long peakDb = Math.round(peak > 0 ? 20 * Math.log10(peak / 32768.0) : -90);
+                if (peakDb > -40) {
+                    voice("rawok", "The microphone hears you (loudest " + peakDb + " dB). CASA can send speech to a cloud service.", null);
+                } else {
+                    voice("rawsilent", "The microphone opened but heard almost nothing (loudest " + peakDb + " dB).", null);
+                }
+            } catch (RuntimeException ex) {
+                voice("rawnone", "Microphone error: " + ex.getMessage(), null);
+            } finally {
+                if (rec != null) {
+                    try { rec.stop(); } catch (RuntimeException ignored) { }
+                    rec.release();
+                }
+                rawRunning = false;
+            }
+        }).start();
     }
 
     private void stopVoice() {
