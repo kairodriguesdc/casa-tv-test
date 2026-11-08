@@ -6,7 +6,7 @@ Connect-Tv
 $log = @(Adb logcat -d -s CasaTest)
 $result = ($log | Where-Object { $_ -match 'RESULT ' } | Select-Object -Last 1) -replace '^.*RESULT ', ''
 $keys   = ($log | Where-Object { $_ -match 'KEY |WATCH ' } | Select-Object -Last 12 | ForEach-Object { $_ -replace '^.*CasaTest[^:]*: ', '' }) -join "`r`n"
-$voice  = ($log | Where-Object { $_ -match 'VOICE ' -and $_ -match '"done"|"error"' } | Select-Object -Last 6 | ForEach-Object { $_ -replace '^.*VOICE ', '' }) -join "`r`n"
+$voice  = ($log | Where-Object { $_ -match 'VOICE ' -and $_ -match '"done"|"error"|"raw|"unavailable"|"denied"' } | Select-Object -Last 6 | ForEach-Object { $_ -replace '^.*VOICE ', '' }) -join "`r`n"
 $model  = TvShell getprop ro.product.model
 
 if (-not $result) { Fail 'no results yet. Run the tests on the TV first (CASA Test must be open).' }

@@ -7,7 +7,7 @@ connect
 log="$("${ADB}" -s "${T}" logcat -d -s CasaTest 2>/dev/null | tr -d '\r')"
 result="$(printf '%s\n' "$log" | grep 'RESULT ' | tail -1 | sed 's/.*RESULT //')"
 keys="$(printf '%s\n' "$log" | grep -e 'KEY ' -e 'WATCH ' | tail -12 | sed 's/^.*CasaTest[^:]*: //')"
-voice="$(printf '%s\n' "$log" | grep 'VOICE ' | grep -e '"done"' -e '"error"' | tail -6 | sed 's/^.*VOICE //')"
+voice="$(printf '%s\n' "$log" | grep 'VOICE ' | grep -e '"done"' -e '"error"' -e '"raw' -e '"unavailable"' -e '"denied"' | tail -6 | sed 's/^.*VOICE //')"
 model="$(sh_tv getprop ro.product.model)"
 
 [ -n "${result}" ] || fail "no results yet. Run the tests on the TV first (CASA Test must be open)."
